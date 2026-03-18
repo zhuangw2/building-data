@@ -27,7 +27,7 @@
         .export-btn { background: #34c759; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px;}
         .table-section { flex-grow: 1; padding: 0 40px 20px 40px; overflow-y: auto; background: white; }
         table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        th { position: sticky; top: 0; background: #fff; text-align: left; padding: 12px; font-size: 11px; color: var(--text-sub); border-bottom: 2px solid var(--border-color); }
+        th { position: sticky; top: 0; background: #fff; text-align: left; padding: 12px; font-size: 11px; color: var(--text-sub); border-bottom: 2px solid var(--border-color); z-index: 10;}
         td { padding: 10px 12px; font-size: 12px; border-bottom: 1px solid #f0f0f2; cursor: pointer; }
         tr.selected td { background-color: #e8f3ff; color: var(--primary-color); font-weight: 600; }
     </style>
@@ -36,7 +36,7 @@
 
 <div class="sidebar">
     <h2>BIM 数据中心</h2>
-    <div id="loadStatus" class="status-bar">🔄 正在同步 GSheet...</div>
+    <div id="loadStatus" class="status-bar">🔄 正在同步云端...</div>
     <div class="sheet-container" id="sheetTabs"></div>
 </div>
 
@@ -73,8 +73,8 @@
 </div>
 
 <script>
-    // 【配置中心】填入你发布为 CSV 的 GSheet 链接
-    const GSHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRDaoEqhuoHOzlULSo8XFPcrlU8KzKtZC5P2xH7ZDhdLRt2z9KxFRCTvuwt-F1SNkCPbya_xb7HikF8/pub?output=csv';
+    // 自动添加时间戳防止缓存
+    const GSHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRDaoEqhuoHOzlULSo8XFPcrlU8KzKtZC5P2xH7ZDhdLRt2z9KxFRCTvuwt-F1SNkCPbya_xb7HikF8/pub?output=csv&t=' + new Date().getTime();
 
     let allDataGroups = {}; 
     let currentSheetData = [];
@@ -82,23 +82,39 @@
     window.onload = () => { loadData(); };
 
     function loadData() {
-        fetch(GSHEET_URL).then(res => res.text()).then(csv => {
-            const workbook = XLSX.read(csv, {type: 'string'});
-            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            
-            const groups = {};
-            json.forEach(row => {
-                const bNo = row['楼号'] || row['BUILDIN NO.'] || '默认楼栋';
-                if(!groups[bNo]) groups[bNo] = [];
-                // 精确保留每一行，不进行模糊合并
-                groups[bNo].push(row);
-            });
+        fetch(GSHEET_URL)
+            .then(res => res.text())
+            .then(csv => {
+                const workbook = XLSX.read(csv, {type: 'string'});
+                const rawJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                
+                // --- 深度清理表头 ---
+                const json = rawJson.map(row => {
+                    let newRow = {};
+                    for (let key in row) {
+                        newRow[key.trim()] = row[key]; // 强制去掉表头空格
+                    }
+                    return newRow;
+                });
 
-            allDataGroups = groups;
-            document.getElementById('loadStatus').innerText = "✅ 数据同步成功";
-            renderTabs();
-            switchSheet(Object.keys(allDataGroups)[0]);
-        });
+                const groups = {};
+                json.forEach(row => {
+                    // 兼容多种“楼号”写法
+                    const bNo = row['楼号'] || row['BUILDIN NO.'] || row['BUILDING NO.'] || '默认楼栋';
+                    if(!groups[bNo]) groups[bNo] = [];
+                    groups[bNo].push(row);
+                });
+
+                allDataGroups = groups;
+                document.getElementById('loadStatus').innerText = "✅ 云端同步成功";
+                renderTabs();
+                const firstBuild = Object.keys(allDataGroups)[0];
+                if(firstBuild) switchSheet(firstBuild);
+            })
+            .catch(err => {
+                document.getElementById('loadStatus').innerText = "❌ 同步失败，请检查网络";
+                console.error(err);
+            });
     }
 
     function renderTabs() {
@@ -122,7 +138,7 @@
     function renderTable(data) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
-        data.forEach((item, index) => {
+        data.forEach((item) => {
             const no = item['房间号'] || item['Room-number'];
             if(!no || String(item['房间名称']).includes('合计')) return;
             const tr = document.createElement('tr');
@@ -138,7 +154,7 @@
 
     function updatePanel(item) {
         document.getElementById('res_name').innerText = item['房间名称'] || '-';
-        document.getElementById('res_build').innerText = item['楼号'] || '-';
+        document.getElementById('res_build').innerText = item['楼号'] || item['BUILDIN NO.'] || '-';
         document.getElementById('res_no').innerText = item['房间号'] || item['Room-number'] || '-';
         document.getElementById('res_floor').innerText = item['楼层'] || '-';
         document.getElementById('res_area').innerText = (item['净面积(M2)'] || item['NET AREA'] || '-') + " M2";
@@ -151,14 +167,16 @@
 
     function handleSearch() {
         const val = document.getElementById('searchInput').value.trim().toLowerCase();
-        const filtered = currentSheetData.filter(i => String(i['房间号'] || i['Room-number']).toLowerCase().includes(val));
+        const filtered = currentSheetData.filter(i => String(i['房间号'] || i['Room-number'] || '').toLowerCase().includes(val));
         renderTable(filtered);
     }
 
     function exportToImage() {
+        const roomNo = document.getElementById('res_no').innerText;
+        if(roomNo === "-") return alert("请先选择房间");
         html2canvas(document.getElementById('captureArea')).then(canvas => {
             const link = document.createElement('a');
-            link.download = `做法卡片_${document.getElementById('res_no').innerText}.png`;
+            link.download = `做法卡片_${roomNo}.png`;
             link.href = canvas.toDataURL();
             link.click();
         });
