@@ -3,33 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIM 房间属性云端管理系统</title>
+    <title>BIM 房间属性管理系统</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root { --primary-color: #0067FF; --bg-color: #F4F7F9; --sidebar-bg: #1A1C1E; --text-main: #1D1D1F; --text-sub: #86868B; --border-color: #E5E5E7; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); margin: 0; height: 100vh; display: flex; overflow: hidden; }
-        .sidebar { width: 260px; background: var(--sidebar-bg); color: white; padding: 25px 15px; display: flex; flex-direction: column; flex-shrink: 0; box-sizing: border-box;}
+        
+        /* 侧边栏 */
+        .sidebar { width: 260px; background: var(--sidebar-bg); color: white; padding: 25px 15px; display: flex; flex-direction: column; flex-shrink: 0; box-sizing: border-box; }
         .sidebar h2 { font-size: 18px; margin: 0 0 20px 0; border-left: 4px solid var(--primary-color); padding-left: 10px; }
-        .status-bar { font-size: 12px; padding: 10px; background: #25282B; border-radius: 8px; margin-bottom: 20px; color: #FFD700; }
+        .status-bar { font-size: 12px; padding: 10px; background: #25282B; border-radius: 8px; margin-bottom: 20px; color: #FFD700; text-align: center; }
+        .sheet-label { font-size: 11px; color: #555; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
         .sheet-container { flex-grow: 1; overflow-y: auto; }
-        .sheet-btn { width: 100%; padding: 10px 15px; background: #2c2c2e; border: none; color: #ccc; text-align: left; margin-bottom: 5px; border-radius: 6px; cursor: pointer; font-size: 13px; }
-        .sheet-btn.active { background: var(--primary-color); color: white; font-weight: 600; }
-        .main-layout { flex-grow: 1; display: flex; flex-direction: column; }
-        .top-section { padding: 20px 40px; background: white; border-bottom: 1px solid var(--border-color); display: grid; grid-template-columns: 1fr 320px; gap: 30px; }
-        #captureArea { background: white; padding: 15px; border-radius: 12px; border: 1px solid #eee; }
-        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .data-item { background: #f8f9fb; padding: 8px 12px; border-radius: 6px; border: 1px solid #f0f0f2; }
-        .data-label { font-size: 10px; color: var(--text-sub); display: block; margin-bottom: 2px; }
-        .data-value { font-size: 12px; font-weight: 600; color: var(--text-main); white-space: pre-line; }
-        .search-box input { width: 100%; padding: 12px; border-radius: 8px; border: 2px solid var(--primary-color); outline: none; box-sizing: border-box; }
-        .export-btn { background: #34c759; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px;}
-        .table-section { flex-grow: 1; padding: 0 40px 20px 40px; overflow-y: auto; background: white; }
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        th { position: sticky; top: 0; background: #fff; text-align: left; padding: 12px; font-size: 11px; color: var(--text-sub); border-bottom: 2px solid var(--border-color); z-index: 10;}
-        td { padding: 10px 12px; font-size: 12px; border-bottom: 1px solid #f0f0f2; cursor: pointer; }
+        .sheet-btn { width: 100%; padding: 12px 15px; background: #2c2c2e; border: none; color: #ccc; text-align: left; margin-bottom: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.2s; }
+        .sheet-btn:hover { background: #3a3a3c; }
+        .sheet-btn.active { background: var(--primary-color); color: white; font-weight: 600; box-shadow: 0 4px 12px rgba(0,103,255,0.3); }
+
+        /* 主布局 */
+        .main-layout { flex-grow: 1; display: flex; flex-direction: column; min-width: 800px; }
+        
+        /* 顶部卡片区 */
+        .top-section { padding: 20px 40px; background: white; border-bottom: 1px solid var(--border-color); display: grid; grid-template-columns: 1fr 320px; gap: 30px; align-items: start; }
+        #captureArea { background: white; padding: 20px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .detail-header h1 { margin: 0 0 15px 0; font-size: 24px; color: var(--text-main); border-bottom: 2px solid var(--primary-color); display: inline-block; padding-bottom: 5px; }
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .data-item { background: #f8f9fb; padding: 10px 12px; border-radius: 6px; border: 1px solid #f0f0f2; }
+        .data-label { font-size: 10px; color: var(--text-sub); display: block; margin-bottom: 4px; font-weight: 600; }
+        .data-value { font-size: 13px; font-weight: 600; color: var(--text-main); white-space: pre-line; word-break: break-all; }
+
+        /* 控制面板 */
+        .control-panel { display: flex; flex-direction: column; gap: 15px; }
+        .search-box input { width: 100%; padding: 14px; border-radius: 8px; border: 2px solid var(--primary-color); font-size: 14px; outline: none; box-sizing: border-box; transition: 0.3s; }
+        .search-box input:focus { box-shadow: 0 0 10px rgba(0,103,255,0.2); }
+        .export-btn { background: #34c759; color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.3s; }
+        .export-btn:hover { background: #28a745; transform: translateY(-1px); }
+
+        /* 表格区 */
+        .table-section { flex-grow: 1; padding: 20px 40px; overflow-y: auto; background: white; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { position: sticky; top: 0; background: #fdfdfd; text-align: left; padding: 12px; font-size: 11px; color: var(--text-sub); z-index: 10; border-bottom: 2px solid var(--border-color); text-transform: uppercase; }
+        td { padding: 12px; font-size: 13px; border-bottom: 1px solid #f0f0f2; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        tr:hover td { background-color: #f8faff; }
         tr.selected td { background-color: #e8f3ff; color: var(--primary-color); font-weight: 600; }
+        
+        /* 列宽控制 */
+        .col-floor { width: 80px; }
+        .col-no { width: 100px; }
+        .col-name { width: 200px; }
     </style>
 </head>
 <body>
@@ -37,82 +59,94 @@
 <div class="sidebar">
     <h2>BIM 数据中心</h2>
     <div id="loadStatus" class="status-bar">🔄 正在同步云端...</div>
-    <div class="sheet-container" id="sheetTabs"></div>
+    <div class="sheet-label">楼栋列表 (BUILDIN)</div>
+    <div id="sheetTabs" class="sheet-container"></div>
 </div>
 
 <div class="main-layout">
     <div class="top-section">
         <div id="captureArea">
-            <h1 id="res_name" style="margin:0 0 15px 0; font-size:22px;">请选择房间</h1>
-            <div class="info-grid">
-                <div class="data-item"><span class="data-label">楼号</span><span id="res_build" class="data-value">-</span></div>
-                <div class="data-item"><span class="data-label">楼层</span><span id="res_floor" class="data-value">-</span></div>
-                <div class="data-item"><span class="data-label">房间号</span><span id="res_no" class="data-value">-</span></div>
-                <div class="data-item"><span class="data-label">面积(M2)</span><span id="res_area" class="data-value">-</span></div>
-                <div class="data-item"><span class="data-label">地面做法</span><span id="res_floor_finish" class="data-value">-</span></div>
-                <div class="data-item"><span class="data-label">墙面做法</span><span id="res_wall_finish" class="data-value">-</span></div>
-                <div class="data-item"><span class="data-label">踢脚做法</span><span id="res_skirting" class="data-value">-</span></div>
-                <div class="data-item"><span class="data-label">吊顶做法</span><span id="res_ceiling" class="data-value">-</span></div>
-                <div class="data-item"><span class="data-label">吊顶高度</span><span id="res_height" class="data-value">-</span></div>
+            <div class="detail-header">
+                <h1 id="res_name">请选择房间</h1>
+                <div class="info-grid">
+                    <div class="data-item"><span class="data-label">楼号 (BUILDIN)</span><span id="res_build" class="data-value">-</span></div>
+                    <div class="data-item"><span class="data-label">楼层 (FLOOR)</span><span id="res_floor" class="data-value">-</span></div>
+                    <div class="data-item"><span class="data-label">房间号 (NUMBER)</span><span id="res_no" class="data-value">-</span></div>
+                    <div class="data-item"><span class="data-label">面积 (AREA)</span><span id="res_area" class="data-value">-</span></div>
+                    <div class="data-item"><span class="data-label">地面做法</span><span id="res_floor_finish" class="data-value">-</span></div>
+                    <div class="data-item"><span class="data-label">墙面做法</span><span id="res_wall_finish" class="data-value">-</span></div>
+                    <div class="data-item"><span class="data-label">踢脚做法</span><span id="res_skirting" class="data-value">-</span></div>
+                    <div class="data-item"><span class="data-label">吊顶做法</span><span id="res_ceiling" class="data-value">-</span></div>
+                    <div class="data-item"><span class="data-label">吊顶高度</span><span id="res_height" class="data-value">-</span></div>
+                </div>
             </div>
         </div>
+
         <div class="control-panel">
             <div class="search-box">
-                <p style="font-size: 13px; font-weight:600; color:var(--primary-color); margin:0 0 8px 0;">🔍 搜索房间号:</p>
-                <input type="text" id="searchInput" placeholder="搜索编号 (如 101a)..." oninput="handleSearch()">
+                <p style="font-size: 12px; font-weight:600; color:var(--text-sub); margin:0 0 8px 0;">快速定位房间号:</p>
+                <input type="text" id="searchInput" placeholder="例如: 101 or 101a..." oninput="handleSearch()">
             </div>
-            <button class="export-btn" onclick="exportToImage()">📸 导出做法卡片</button>
+            <button class="export-btn" onclick="exportToImage()">📸 导出选中做法卡片</button>
         </div>
     </div>
+
     <div class="table-section">
         <table id="dataTable">
-            <thead><tr><th>楼层</th><th>房间号</th><th>名称</th><th>面积</th><th>地面做法</th><th>墙面做法</th></tr></thead>
+            <thead>
+                <tr>
+                    <th class="col-floor">楼层</th>
+                    <th class="col-no">房间号</th>
+                    <th class="col-name">房间名称</th>
+                    <th>面积 (M2)</th>
+                    <th>地面做法</th>
+                    <th>墙面做法</th>
+                </tr>
+            </thead>
             <tbody id="tableBody"></tbody>
         </table>
     </div>
 </div>
 
 <script>
-    // 自动添加时间戳防止缓存
-    const GSHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRDaoEqhuoHOzlULSo8XFPcrlU8KzKtZC5P2xH7ZDhdLRt2z9KxFRCTvuwt-F1SNkCPbya_xb7HikF8/pub?output=csv' + new Date().getTime();
+    // 使用你提供的发布链接，增加随机参数防止缓存
+    const GSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRDaoEqhuoHOzlULSo8XFPcrlU8KzKtZC5P2xH7ZDhdLRt2z9KxFRCTvuwt-F1SNkCPbya_xb7HikF8/pub?output=csv&t=' + new Date().getTime();
 
     let allDataGroups = {}; 
     let currentSheetData = [];
 
-    window.onload = () => { loadData(); };
+    window.onload = () => { fetchGSheet(); };
 
-    function loadData() {
-        fetch(GSHEET_URL)
+    function fetchGSheet() {
+        fetch(GSHEET_CSV_URL)
             .then(res => res.text())
-            .then(csv => {
-                const workbook = XLSX.read(csv, {type: 'string'});
-                const rawJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            .then(csvText => {
+                const workbook = XLSX.read(csvText, {type: 'string'});
+                const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 
-                // --- 深度清理表头 ---
-                const json = rawJson.map(row => {
-                    let newRow = {};
-                    for (let key in row) {
-                        newRow[key.trim()] = row[key]; // 强制去掉表头空格
-                    }
-                    return newRow;
-                });
-
+                // 数据清洗与分组
                 const groups = {};
-                json.forEach(row => {
-                    // 兼容多种“楼号”写法
-                    const bNo = row['楼号'] || row['BUILDIN NO.'] || row['BUILDING NO.'] || '默认楼栋';
-                    if(!groups[bNo]) groups[bNo] = [];
+                rawData.forEach(row => {
+                    // 兼容你的表格列名
+                    const bNo = row['BUILDIN NO.'] || row['楼号'] || '其他';
+                    const rNo = row['Room-number'] || row['房间号'];
+                    
+                    if (!rNo || String(rNo).includes('合计')) return;
+
+                    if (!groups[bNo]) groups[bNo] = [];
                     groups[bNo].push(row);
                 });
 
                 allDataGroups = groups;
                 document.getElementById('loadStatus').innerText = "✅ 云端同步成功";
                 renderTabs();
+                
+                // 默认加载第一个楼栋
                 const firstBuild = Object.keys(allDataGroups)[0];
-                if(firstBuild) switchSheet(firstBuild);
+                if (firstBuild) switchSheet(firstBuild);
             })
             .catch(err => {
-                document.getElementById('loadStatus').innerText = "❌ 同步失败，请检查网络";
+                document.getElementById('loadStatus').innerText = "❌ 连接失败，请检查发布设置";
                 console.error(err);
             });
     }
@@ -120,10 +154,12 @@
     function renderTabs() {
         const container = document.getElementById('sheetTabs');
         container.innerHTML = '';
-        Object.keys(allDataGroups).forEach(name => {
+        Object.keys(allDataGroups).sort().forEach(name => {
             const btn = document.createElement('button');
-            btn.className = 'sheet-btn'; btn.innerText = "🏢 " + name;
-            btn.onclick = () => switchSheet(name); btn.id = 'tab-' + name;
+            btn.className = 'sheet-btn'; 
+            btn.innerText = "🏢 楼栋: " + name;
+            btn.id = 'tab-' + name;
+            btn.onclick = () => switchSheet(name);
             container.appendChild(btn);
         });
     }
@@ -131,33 +167,39 @@
     function switchSheet(name) {
         currentSheetData = allDataGroups[name];
         document.querySelectorAll('.sheet-btn').forEach(b => b.classList.remove('active'));
-        if(document.getElementById('tab-' + name)) document.getElementById('tab-' + name).classList.add('active');
+        document.getElementById('tab-' + name).classList.add('active');
         renderTable(currentSheetData);
+        document.getElementById('searchInput').value = "";
     }
 
     function renderTable(data) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
-        data.forEach((item) => {
-            const no = item['房间号'] || item['Room-number'];
-            if(!no || String(item['房间名称']).includes('合计')) return;
+        data.forEach(item => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${item['楼层'] || '-'}</td><td style="font-weight:600">${no}</td><td>${item['房间名称'] || '-'}</td><td>${item['净面积(M2)'] || item['NET AREA'] || '-'}</td><td>${item['地面做法'] || '-'}</td><td>${item['墙面做法 '] || '-'}</td>`;
+            tr.innerHTML = `
+                <td>${item['BUILDING FLOOR'] || item['楼层'] || '-'}</td>
+                <td style="font-weight:600">${item['Room-number'] || item['房间号'] || '-'}</td>
+                <td>${item['ROOM NAME'] || item['房间名称'] || '-'}</td>
+                <td>${item['NET AREA'] || item['净面积(M2)'] || '-'}</td>
+                <td>${item['地面做法'] || '-'}</td>
+                <td>${item['墙面做法 '] || '-'}</td>
+            `;
             tr.onclick = () => {
                 document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
                 tr.classList.add('selected');
-                updatePanel(item);
+                updateUI(item);
             };
             tbody.appendChild(tr);
         });
     }
 
-    function updatePanel(item) {
-        document.getElementById('res_name').innerText = item['房间名称'] || '-';
-        document.getElementById('res_build').innerText = item['楼号'] || item['BUILDIN NO.'] || '-';
-        document.getElementById('res_no').innerText = item['房间号'] || item['Room-number'] || '-';
-        document.getElementById('res_floor').innerText = item['楼层'] || '-';
-        document.getElementById('res_area').innerText = (item['净面积(M2)'] || item['NET AREA'] || '-') + " M2";
+    function updateUI(item) {
+        document.getElementById('res_name').innerText = (item['ROOM NAME'] || item['房间名称'] || '未命名房间').trim();
+        document.getElementById('res_build').innerText = item['BUILDIN NO.'] || item['楼号'] || '-';
+        document.getElementById('res_floor').innerText = item['BUILDING FLOOR'] || item['楼层'] || '-';
+        document.getElementById('res_no').innerText = item['Room-number'] || item['房间号'] || '-';
+        document.getElementById('res_area').innerText = (item['NET AREA'] || item['净面积(M2)'] || '-') + " M2";
         document.getElementById('res_floor_finish').innerText = item['地面做法'] || '-';
         document.getElementById('res_wall_finish').innerText = item['墙面做法 '] || '-';
         document.getElementById('res_skirting').innerText = item['踢脚作法'] || '-';
@@ -166,18 +208,23 @@
     }
 
     function handleSearch() {
-        const val = document.getElementById('searchInput').value.trim().toLowerCase();
-        const filtered = currentSheetData.filter(i => String(i['房间号'] || i['Room-number'] || '').toLowerCase().includes(val));
+        const query = document.getElementById('searchInput').value.trim().toLowerCase();
+        const filtered = currentSheetData.filter(i => 
+            String(i['Room-number'] || i['房间号']).toLowerCase().includes(query)
+        );
         renderTable(filtered);
+        if (filtered.length > 0 && query !== "") updateUI(filtered[0]);
     }
 
     function exportToImage() {
-        const roomNo = document.getElementById('res_no').innerText;
-        if(roomNo === "-") return alert("请先选择房间");
-        html2canvas(document.getElementById('captureArea')).then(canvas => {
+        const area = document.getElementById('captureArea');
+        const rNo = document.getElementById('res_no').innerText;
+        if (rNo === "-") return alert("请先在下方表格中点击选择一个房间！");
+        
+        html2canvas(area, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
             const link = document.createElement('a');
-            link.download = `做法卡片_${roomNo}.png`;
-            link.href = canvas.toDataURL();
+            link.download = `BIM做法卡片_${rNo}.png`;
+            link.href = canvas.toDataURL("image/png");
             link.click();
         });
     }
